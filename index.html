@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAW Sorter · Sony A7R III</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/moonspam/NanumSquare@2.0/nanumsquare.css">
+<style>
+  :root {
+    --bg: #f6f2e9;
+    --surface: #fffdf8;
+    --surface-soft: #f0eadf;
+    --border: #ded4c4;
+    --border-strong: #cbbda8;
+    --text: #39342d;
+    --muted: #82796d;
+    --accent: #9a7755;
+    --accent-hover: #826244;
+    --selected-bg: #edf3e9;
+    --selected-border: #9caf8f;
+    --selected-text: #52684b;
+    --waste-bg: #f8ece8;
+    --waste-border: #caa293;
+    --waste-text: #8a594c;
+    --neutral-bg: #eee9e0;
+    --neutral-border: #c8bdad;
+    --neutral-text: #71685d;
+    font-family: 'NanumSquare', 'Malgun Gothic', sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; padding: 36px 24px 56px; background: var(--bg); color: var(--text); font-size: 14px; }
+  main { width: min(100%, 1040px); margin: 0 auto; }
+  header { margin-bottom: 28px; padding: 0 2px 18px; border-bottom: 1px solid var(--border); }
+  header h1 { margin: 0 0 7px; font-size: 26px; font-weight: 800; letter-spacing: -0.04em; }
+  header p { margin: 0; color: var(--muted); font-size: 13px; }
+  .panel { margin-bottom: 16px; padding: 22px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 5px 18px rgba(91, 72, 50, 0.045); }
+  .panel-title { margin-bottom: 16px; color: var(--accent); font-size: 13px; font-weight: 800; }
+  .folder-row, .toolbar, .stats-row, .action-row { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+  .folder-path { flex: 1; min-width: 180px; overflow: hidden; padding: 10px 13px; background: #fbf8f1; border: 1px solid var(--border); border-radius: 8px; color: var(--accent); text-overflow: ellipsis; white-space: nowrap; }
+  .folder-path.empty { color: var(--muted); }
+  button, input { font: inherit; }
+  button { padding: 9px 13px; border: 1px solid var(--border-strong); border-radius: 8px; cursor: pointer; transition: background .14s, border-color .14s, color .14s, transform .08s; white-space: nowrap; }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+  .btn-ghost { background: #fffdf8; color: var(--text); }
+  .btn-ghost:hover:not(:disabled) { background: var(--surface-soft); }
+  .btn-sel { background: var(--selected-bg); border-color: var(--selected-border); color: var(--selected-text); }
+  .btn-waste { background: var(--waste-bg); border-color: var(--waste-border); color: var(--waste-text); }
+  .btn-setup { background: var(--neutral-bg); border-color: var(--neutral-border); color: var(--neutral-text); }
+  .hint { margin-top: 10px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+  .stats-row { margin-bottom: 14px; }
+  .stat { display: flex; align-items: baseline; gap: 7px; padding: 9px 13px; background: var(--surface-soft); border: 1px solid var(--border); border-radius: 8px; }
+  .stat .num { font-size: 19px; font-weight: 800; }
+  .stat .label { color: var(--muted); font-size: 11px; }
+  .s-sel .num { color: var(--selected-text); }
+  .s-waste .num { color: var(--waste-text); }
+  .toolbar { margin-bottom: 12px; }
+  .toolbar-sep { flex: 1; }
+  .search-input { width: 190px; padding: 9px 12px; background: #fffdf8; border: 1px solid var(--border); border-radius: 8px; color: var(--text); outline: none; }
+  .search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(154,119,85,.1); }
+  .kbd { padding: 2px 6px; background: var(--surface-soft); border: 1px solid var(--border); border-radius: 4px; color: var(--muted); font-size: 10px; }
+  .file-list { min-height: 120px; max-height: 440px; overflow-y: auto; background: #fffdf8; border: 1px solid var(--border); border-radius: 9px; }
+  .file-browser { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 14px; align-items: stretch; }
+  .preview-panel { display: flex; min-height: 300px; padding: 12px; flex-direction: column; background: #f4efe6; border: 1px solid var(--border); border-radius: 9px; }
+  .preview-frame { display: grid; min-height: 250px; flex: 1; overflow: hidden; place-items: center; background: #e8e0d3; border-radius: 7px; color: var(--muted); text-align: center; line-height: 1.6; }
+  .preview-frame img { display: block; width: 100%; height: 100%; max-height: 360px; object-fit: contain; }
+  .preview-spinner { width: 24px; height: 24px; margin: 0 auto 10px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .75s linear infinite; }
+  .preview-meta { min-height: 34px; padding: 11px 2px 0; color: var(--muted); font-size: 11px; line-height: 1.5; word-break: break-all; }
+  .preview-meta strong { color: var(--text); font-size: 12px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .file-item { display: grid; grid-template-columns: 24px 1fr auto auto; align-items: center; gap: 11px; padding: 11px 14px; border-bottom: 1px solid #e9e2d7; cursor: pointer; user-select: none; }
+  .file-item:last-child { border-bottom: 0; }
+  .file-item:hover { background: #faf6ee; }
+  .file-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .file-item.selected { background: var(--selected-bg); }
+  .checkbox { display: grid; width: 17px; height: 17px; place-items: center; border: 1.5px solid var(--border-strong); border-radius: 4px; font-size: 11px; }
+  .selected .checkbox { background: var(--selected-text); border-color: var(--selected-text); color: white; }
+  .file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .selected .file-name { color: var(--selected-text); font-weight: 700; }
+  .file-size { color: var(--muted); font-size: 11px; white-space: nowrap; }
+  .file-tag { padding: 3px 7px; border-radius: 5px; font-size: 10px; }
+  .tag-sel { background: var(--selected-bg); border: 1px solid var(--selected-border); color: var(--selected-text); }
+  .tag-neutral { background: var(--neutral-bg); border: 1px solid var(--neutral-border); color: var(--neutral-text); }
+  .empty-state { padding: 50px 20px; color: var(--muted); text-align: center; line-height: 1.7; }
+  .empty-state .icon { margin-bottom: 8px; font-size: 28px; }
+  .action-row { margin-bottom: 12px; }
+  .log-area { max-height: 160px; overflow-y: auto; padding: 12px 14px; background: #fbf8f1; border: 1px solid var(--border); border-radius: 8px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+  .log-ok { color: var(--selected-text); } .log-warn { color: #9a712d; } .log-err { color: var(--waste-text); } .log-info { color: #6d6b79; }
+  .progress-bar { display: none; height: 4px; margin: 10px 0; overflow: hidden; background: var(--surface-soft); border-radius: 3px; }
+  .progress-bar.active { display: block; }
+  .progress-fill { width: 0; height: 100%; background: var(--accent); transition: width .2s; }
+  @media (max-width: 780px) { .file-browser { grid-template-columns: 1fr; } .preview-panel { min-height: 260px; } .preview-frame { min-height: 210px; } }
+  @media (max-width: 640px) { body { padding: 20px 12px 36px; } .panel { padding: 16px; } .search-input { width: 100%; } .file-item { grid-template-columns: 22px 1fr auto; } .file-size { display: none; } }
+</style>
+</head>
+<body>
+<main>
+  <header><h1>RAW Sorter</h1><p>Sony A7R III · ARW 파일 분류 도구</p></header>
+
+  <section class="panel">
+    <div class="panel-title">01. 작업 폴더 선택</div>
+    <div class="folder-row">
+      <div class="folder-path empty" id="folderPathDisplay">폴더를 선택하세요</div>
+      <button class="btn-ghost" id="btnSelectFolder">폴더 열기</button>
+      <button class="btn-setup" id="btnCreateFolders" disabled>sel / waste 폴더 생성</button>
+      <button class="btn-ghost" id="btnScan" disabled>파일 스캔</button>
+    </div>
+    <div id="folderStatus" class="hint"></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-title">02. RAW 파일 목록 및 분류</div>
+    <div class="stats-row" id="statsRow" hidden>
+      <div class="stat"><span class="num" id="statTotal">0</span><span class="label">전체 파일</span></div>
+      <div class="stat s-sel"><span class="num" id="statSel">0</span><span class="label">sel 이동</span></div>
+      <div class="stat s-waste"><span class="num" id="statWaste">0</span><span class="label">waste 이동</span></div>
+      <div class="stat"><span class="num" id="statPending">0</span><span class="label">미선택</span></div>
+    </div>
+    <div class="toolbar" id="toolbar" hidden>
+      <button class="btn-ghost" id="btnSelectAll">전체 선택</button>
+      <button class="btn-ghost" id="btnSelectNone">전체 해제</button>
+      <button class="btn-ghost" id="btnInvert">반전</button>
+      <span class="hint"><span class="kbd">Space</span> 선택/해제 · <span class="kbd">↑ ↓</span> 이동</span>
+      <span class="toolbar-sep"></span>
+      <input class="search-input" id="searchInput" type="search" placeholder="파일명 검색…">
+    </div>
+    <div class="file-browser">
+      <div class="file-list" id="fileList"><div class="empty-state"><div class="icon">◌</div><div>폴더를 선택하고 스캔하면<br>RAW 파일 목록이 표시됩니다.</div></div></div>
+      <aside class="preview-panel" aria-label="이미지 미리보기">
+        <div class="preview-frame" id="previewFrame"><div>파일을 선택하면<br>미리보기가 표시됩니다.</div></div>
+        <div class="preview-meta" id="previewMeta">ARW 내장 JPEG 미리보기를 사용합니다.</div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-title">03. 파일 이동 실행</div>
+    <div class="action-row">
+      <button class="btn-sel" id="btnMoveSel" disabled>선택 파일 → sel</button>
+      <button class="btn-waste" id="btnMoveAll" disabled>미선택 파일 → waste</button>
+      <button class="btn-primary" id="btnMoveExecute" disabled>전체 분류 실행</button>
+    </div>
+    <div class="hint">선택한 파일은 <strong>sel</strong>, 나머지 파일은 <strong>waste</strong> 폴더로 이동합니다.</div>
+    <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="log-area" id="logArea">작업 로그가 여기에 표시됩니다.</div>
+  </section>
+</main>
+
+<script>
+const RAW_EXTS = new Set(['arw','raw','nef','cr2','cr3','dng','orf','rw2','raf','srw','pef','mrw']);
+const naturalCollator = new Intl.Collator('ko-KR', { numeric: true, sensitivity: 'base' });
+let rootDirHandle = null, selDirHandle = null, wasteDirHandle = null;
+let allFiles = [], selectedSet = new Set(), searchQuery = '';
+const $ = id => document.getElementById(id);
+const btnSelectFolder=$('btnSelectFolder'), btnCreateFolders=$('btnCreateFolders'), btnScan=$('btnScan');
+const folderPathDisplay=$('folderPathDisplay'), folderStatus=$('folderStatus'), statsRow=$('statsRow'), toolbar=$('toolbar'), fileList=$('fileList');
+const statTotal=$('statTotal'), statSel=$('statSel'), statWaste=$('statWaste'), statPending=$('statPending');
+const btnSelectAll=$('btnSelectAll'), btnSelectNone=$('btnSelectNone'), btnInvert=$('btnInvert'), searchInput=$('searchInput');
+const btnMoveSel=$('btnMoveSel'), btnMoveAll=$('btnMoveAll'), btnMoveExecute=$('btnMoveExecute');
+const progressBar=$('progressBar'), progressFill=$('progressFill'), logArea=$('logArea');
+const previewFrame=$('previewFrame'), previewMeta=$('previewMeta');
+let previewUrl=null, previewRequest=0, previewIndex=-1;
+
+function log(msg, type='') {
+  if (logArea.textContent === '작업 로그가 여기에 표시됩니다.') logArea.textContent = '';
+  const line = document.createElement('div');
+  if (type) line.className = 'log-' + type;
+  line.textContent = `[${new Date().toLocaleTimeString('ko-KR')}] ${msg}`;
+  logArea.appendChild(line); logArea.scrollTop = logArea.scrollHeight;
+}
+function fmtSize(bytes) { if (bytes >= 1048576) return (bytes/1048576).toFixed(1)+' MB'; if (bytes >= 1024) return (bytes/1024).toFixed(0)+' KB'; return bytes+' B'; }
+function isRaw(name) { return RAW_EXTS.has(name.split('.').pop().toLowerCase()); }
+
+btnSelectFolder.addEventListener('click', async () => {
+  try {
+    rootDirHandle = await window.showDirectoryPicker({mode:'readwrite'});
+    folderPathDisplay.textContent = rootDirHandle.name; folderPathDisplay.classList.remove('empty');
+    btnCreateFolders.disabled = btnScan.disabled = false; selDirHandle = wasteDirHandle = null;
+    folderStatus.textContent = '폴더 선택 완료. 폴더를 준비한 뒤 파일을 스캔하세요.';
+    log(`폴더 선택: ${rootDirHandle.name}`, 'info');
+  } catch (e) { if (e.name !== 'AbortError') log('폴더 선택 오류: '+e.message, 'err'); }
+});
+
+btnCreateFolders.addEventListener('click', async () => {
+  if (!rootDirHandle) return;
+  try {
+    selDirHandle = await rootDirHandle.getDirectoryHandle('sel',{create:true});
+    wasteDirHandle = await rootDirHandle.getDirectoryHandle('waste',{create:true});
+    folderStatus.textContent = 'sel / waste 폴더 준비 완료';
+    log('sel / waste 폴더 생성 또는 확인 완료', 'ok');
+  } catch(e) { log('폴더 생성 오류: '+e.message, 'err'); }
+});
+
+btnScan.addEventListener('click', async () => {
+  if (!rootDirHandle) return;
+  allFiles=[]; selectedSet.clear(); previewIndex=-1; previewRequest++; clearPreviewUrl();
+  previewFrame.innerHTML='<div>파일을 선택하면<br>미리보기가 표시됩니다.</div>';
+  previewMeta.textContent='ARW 내장 JPEG 미리보기를 사용합니다.';
+  log('스캔 시작…','info');
+  try {
+    selDirHandle ||= await rootDirHandle.getDirectoryHandle('sel',{create:true});
+    wasteDirHandle ||= await rootDirHandle.getDirectoryHandle('waste',{create:true});
+    for await (const [name, handle] of rootDirHandle.entries()) {
+      if (handle.kind === 'file' && isRaw(name)) { const file=await handle.getFile(); allFiles.push({name,size:file.size,handle}); }
+    }
+    allFiles.sort((a,b) => naturalCollator.compare(a.name,b.name));
+    log(`스캔 완료 · RAW 파일 ${allFiles.length}개`, allFiles.length ? 'ok' : 'warn');
+    renderList(); updateStats(); statsRow.hidden=false; toolbar.hidden=false;
+    const disabled=!allFiles.length; btnMoveSel.disabled=btnMoveAll.disabled=btnMoveExecute.disabled=disabled;
+  } catch(e) { log('스캔 오류: '+e.message,'err'); }
+});
+
+function getFilteredIndices() {
+  const q=searchQuery.toLocaleLowerCase('ko-KR');
+  return allFiles.map((f,i)=>({f,i})).filter(({f})=>!q||f.name.toLocaleLowerCase('ko-KR').includes(q)).map(({i})=>i);
+}
+function renderList() {
+  const indices=getFilteredIndices();
+  if (!allFiles.length) { fileList.innerHTML='<div class="empty-state"><div class="icon">◌</div><div>RAW 파일이 없습니다.</div></div>'; return; }
+  if (!indices.length) { fileList.innerHTML='<div class="empty-state"><div class="icon">⌕</div><div>검색 결과가 없습니다.</div></div>'; return; }
+  fileList.textContent='';
+  indices.forEach(idx => {
+    const f=allFiles[idx], isSel=selectedSet.has(idx), item=document.createElement('div');
+    item.className='file-item'+(isSel?' selected':''); item.dataset.idx=idx; item.tabIndex=0;
+    const check=document.createElement('div'); check.className='checkbox'; check.textContent=isSel?'✓':'';
+    const name=document.createElement('div'); name.className='file-name'; name.title=f.name; name.textContent=f.name;
+    const size=document.createElement('div'); size.className='file-size'; size.textContent=fmtSize(f.size);
+    const tag=document.createElement('div'); tag.className='file-tag '+(isSel?'tag-sel':'tag-neutral'); tag.textContent=isSel?'SEL':'대기';
+    item.append(check,name,size,tag);
+    item.addEventListener('click',()=>{ showPreview(idx); toggleSelect(idx); });
+    item.addEventListener('focus',()=>showPreview(idx));
+    item.addEventListener('keydown',e=>handleItemKey(e,idx)); fileList.appendChild(item);
+  });
+}
+function toggleSelect(idx) { selectedSet.has(idx)?selectedSet.delete(idx):selectedSet.add(idx); renderList(); updateStats(); fileList.querySelector(`[data-idx="${idx}"]`)?.focus(); }
+function handleItemKey(e,idx) {
+  const indices=getFilteredIndices(), pos=indices.indexOf(idx);
+  if(e.code==='Space'){e.preventDefault();toggleSelect(idx);return;}
+  const target=e.code==='ArrowDown'?indices[pos+1]:e.code==='ArrowUp'?indices[pos-1]:undefined;
+  if(target!==undefined){e.preventDefault();fileList.querySelector(`[data-idx="${target}"]`)?.focus();}
+}
+
+function clearPreviewUrl() { if (previewUrl) URL.revokeObjectURL(previewUrl); previewUrl=null; }
+function findEmbeddedJpeg(buffer) {
+  const bytes=new Uint8Array(buffer), candidates=[];
+  let start=-1;
+  for(let i=0;i<bytes.length-1;i++) {
+    if(bytes[i]===0xff && bytes[i+1]===0xd8) start=i;
+    else if(start>=0 && bytes[i]===0xff && bytes[i+1]===0xd9) {
+      const length=i+2-start;
+      if(length>50000) candidates.push({start,end:i+2,length});
+      start=-1;
+    }
+  }
+  if(!candidates.length) return null;
+  candidates.sort((a,b)=>b.length-a.length);
+  const best=candidates[0];
+  return buffer.slice(best.start,best.end);
+}
+async function showPreview(idx) {
+  if(idx===previewIndex) return;
+  previewIndex=idx; const request=++previewRequest, entry=allFiles[idx];
+  clearPreviewUrl();
+  previewFrame.innerHTML='<div><div class="preview-spinner"></div>미리보기 불러오는 중…</div>';
+  previewMeta.innerHTML=`<strong>${escapeHtml(entry.name)}</strong><br>${fmtSize(entry.size)}`;
+  try {
+    const file=await entry.handle.getFile(), jpeg=findEmbeddedJpeg(await file.arrayBuffer());
+    if(request!==previewRequest) return;
+    if(!jpeg) throw new Error('내장 JPEG를 찾지 못했습니다.');
+    previewUrl=URL.createObjectURL(new Blob([jpeg],{type:'image/jpeg'}));
+    const img=document.createElement('img'); img.alt=entry.name; img.src=previewUrl;
+    img.onerror=()=>{ if(request===previewRequest) previewFrame.innerHTML='<div>미리보기를 표시할 수 없습니다.</div>'; };
+    previewFrame.textContent=''; previewFrame.appendChild(img);
+  } catch(e) {
+    if(request===previewRequest) previewFrame.innerHTML=`<div>미리보기 없음<br><small>${escapeHtml(e.message)}</small></div>`;
+  }
+}
+function escapeHtml(value) { const el=document.createElement('span'); el.textContent=value; return el.innerHTML; }
+function updateStats(){const total=allFiles.length,sel=selectedSet.size,pending=total-sel;statTotal.textContent=total;statSel.textContent=sel;statWaste.textContent=pending;statPending.textContent=pending;}
+btnSelectAll.addEventListener('click',()=>{allFiles.forEach((_,i)=>selectedSet.add(i));renderList();updateStats();});
+btnSelectNone.addEventListener('click',()=>{selectedSet.clear();renderList();updateStats();});
+btnInvert.addEventListener('click',()=>{allFiles.forEach((_,i)=>selectedSet.has(i)?selectedSet.delete(i):selectedSet.add(i));renderList();updateStats();});
+searchInput.addEventListener('input',()=>{searchQuery=searchInput.value;renderList();});
+
+async function moveFile(entry,target,label){
+  try { const file=await entry.handle.getFile(), newHandle=await target.getFileHandle(entry.name,{create:true}), writable=await newHandle.createWritable(); await writable.write(await file.arrayBuffer()); await writable.close(); await rootDirHandle.removeEntry(entry.name); log(`${entry.name} → ${label}`,'ok'); return true; }
+  catch(e){log(`오류 ${entry.name}: ${e.message}`,'err');return false;}
+}
+async function executeMove(selIndices,wasteIndices){
+  const total=selIndices.length+wasteIndices.length; if(!total){log('이동할 파일이 없습니다.','warn');return;}
+  progressBar.classList.add('active'); progressFill.style.width='0%'; let done=0;
+  [btnMoveSel,btnMoveAll,btnMoveExecute,btnScan,btnSelectFolder].forEach(b=>b.disabled=true);
+  log(`이동 시작 · sel ${selIndices.length}개, waste ${wasteIndices.length}개`,'info');
+  for(const i of selIndices){await moveFile(allFiles[i],selDirHandle,'sel');progressFill.style.width=Math.round(++done/total*100)+'%';}
+  for(const i of wasteIndices){await moveFile(allFiles[i],wasteDirHandle,'waste');progressFill.style.width=Math.round(++done/total*100)+'%';}
+  log('파일 이동 완료','ok'); setTimeout(()=>progressBar.classList.remove('active'),1200); btnScan.disabled=btnSelectFolder.disabled=false; btnScan.click();
+}
+btnMoveSel.addEventListener('click',()=>{const list=[...selectedSet];if(!list.length)return log('선택한 파일이 없습니다.','warn');executeMove(list,[]);});
+btnMoveAll.addEventListener('click',()=>{const list=allFiles.map((_,i)=>i).filter(i=>!selectedSet.has(i));if(!list.length)return log('waste로 이동할 파일이 없습니다.','warn');executeMove([],list);});
+btnMoveExecute.addEventListener('click',()=>executeMove([...selectedSet],allFiles.map((_,i)=>i).filter(i=>!selectedSet.has(i))));
+</script>
+</body>
+</html>
